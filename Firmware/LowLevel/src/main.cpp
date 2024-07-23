@@ -158,7 +158,7 @@ void updateEmergency() {
     uint8_t emergency_state = 0;
 
     // Handle emergency "Stop" buttons
-    if (emergency_read && LL_EMERGENCY_BITS_STOP) {
+    if (emergency_read & LL_EMERGENCY_BITS_STOP) {
         // If we just pressed, store the timestamp
         if (button_emergency_started == 0) {
             button_emergency_started = millis();
@@ -553,7 +553,7 @@ void sendConfigMessage(uint8_t pkt_type) {
     ll_config.type = pkt_type;
     ll_config.config_bitmask = config_bitmask;
     ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
-    strcpy(ll_config.language, "en"); // FIXME: Adapt once nv_config or improve-sound got merged
+    strncpy(ll_config.language, "en", 2); // FIXME: Adapt once nv_config or improve-sound got merged
     sendMessage(&ll_config, sizeof(struct ll_high_level_config));
 }
 
