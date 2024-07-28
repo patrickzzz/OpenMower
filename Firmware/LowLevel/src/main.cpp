@@ -114,6 +114,8 @@ bool sound_available = false;
 bool charging_allowed = false;
 bool ROS_running = false;
 unsigned long charging_disabled_time = 0;
+uint8_t original_emergency_reason = 0;
+unsigned long stable_start_time = 0;
 
 float imu_temp[9];
 float pitch_angle = 0, roll_angle = 0, tilt_angle = 0;
@@ -197,6 +199,32 @@ void updateEmergency() {
     if ((LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) ||
         (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS)) {
         emergency_state |= (emergency_read & LL_EMERGENCY_BITS_LIFT);
+    }
+
+    if (emergency_state && !emergency_latch) {
+		// set reasons for emergency
+        original_emergency_reason |= emergency_state;
+    }
+
+    // Check if initial emergency reason was lift or tilt, and if state is fine now
+    if (emergency_state == 0 && emergency_latch &&
+        ((original_emergency_reason & LL_EMERGENCY_BIT_LIFT1) || (original_emergency_reason & LL_EMERGENCY_BIT_LIFT2) || (original_emergency_reason & LL_EMERGENCY_BITS_LIFT)) &&
+        (tilt_angle + pitch_angle) < 15) {
+
+        if (stable_start_time == 0) {
+            stable_start_time = millis();
+#ifdef ENABLE_SOUND_MODULE
+			soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_AUTONOMOUS_START]);
+#endif
+        }
+
+		if (stable_start_time > 0 && millis() - stable_start_time >= 3000) {
+        	emergency_latch = false;
+        	original_emergency_reason = 0;
+			stable_start_time = 0;
+		}
+    } else {
+        stable_start_time = 0;
     }
 
     if (emergency_state || emergency_latch) {
@@ -600,10 +628,12 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         struct ll_heartbeat *heartbeat = (struct ll_heartbeat *) buffer;
         if (heartbeat->emergency_release_requested) {
             emergency_latch = false;
+			original_emergency_reason = 0;
         }
         // Check in this order, so we can set it again in the same packet if required.
         if (heartbeat->emergency_requested) {
             emergency_latch = true;
+			original_emergency_reason |= LL_EMERGENCY_BIT_LATCH;
         }
         if (!ROS_running) {
             // ROS is running (again (i.e. due to restart after reconfiguration))
