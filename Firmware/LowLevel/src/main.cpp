@@ -201,9 +201,9 @@ void updateEmergency() {
         emergency_state |= (emergency_read & LL_EMERGENCY_BITS_LIFT);
     }
 
-    if (emergency_state && !emergency_latch) {
+    if (emergency_state) {
 		// set reasons for emergency
-        original_emergency_reason |= emergency_state;
+        original_emergency_reason |= (emergency_state & ~LL_EMERGENCY_BIT_LATCH);
     }
 
     // Check if initial emergency reason was lift or tilt, and if state is fine now
