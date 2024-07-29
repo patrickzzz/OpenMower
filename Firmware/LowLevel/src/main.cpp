@@ -208,8 +208,9 @@ void updateEmergency() {
 
     // Check if initial emergency reason was lift or tilt, and if state is fine now
     if (emergency_state == 0 && emergency_latch &&
-        ((original_emergency_reason & LL_EMERGENCY_BIT_LIFT1) || (original_emergency_reason & LL_EMERGENCY_BIT_LIFT2) || (original_emergency_reason & LL_EMERGENCY_BITS_LIFT)) &&
-        (tilt_angle + pitch_angle) < 15) {
+    (original_emergency_reason & LL_EMERGENCY_BITS_LIFT) &&
+    !(original_emergency_reason & ~(LL_EMERGENCY_BITS_LIFT)) &&
+    (tilt_angle + pitch_angle) < 15) {
 
         if (stable_start_time == 0) {
             stable_start_time = millis();
